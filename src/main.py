@@ -5,6 +5,7 @@ Author: Paulius Lėveris
 
 from Classification import Classification
 from FuzzyTopsis import FuzzyTopsis
+from DataReader import DataReader
 
 def main():
     classifier = Classification()
@@ -15,7 +16,8 @@ def main():
     classifier.evaluateModel()
 
     # As a test, perform FUZZY TOPSIS analysis on the first 15 services based on Availability NF-criteria
-    fuzzy_topsis = FuzzyTopsis(classifier.initialData)
+    data = DataReader().read()
+    fuzzy_topsis = FuzzyTopsis(data)
     fuzzy_topsis.evaluate()
 
 if __name__ == "__main__":

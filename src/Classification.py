@@ -10,19 +10,17 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
-import GlobalVars
+from DataReader import DataReader
 
 class Classification:
     def __init__(self):
-        self.dataset_path = GlobalVars.dataset_path
-        self.initialData = None
         self.data = None
         self.model = None
         self.X_train, self.X_test, self.y_train, self.y_test = None, None, None, None
 
     def loadData(self):
-        self.data = pd.read_csv(self.dataset_path)
-        self.initialData = self.data
+        dataReader = DataReader()
+        self.data = dataReader.read()
         
         # Display the first few rows to check if data is present
         print(self.data.head())
@@ -32,7 +30,7 @@ class Classification:
         self.data = self.data.iloc[:, :-1]  # Remove trailing empty column if present
         self.data.drop(['Service Name', 'WSDL Address'], axis=1, inplace=True)
         
-        # Conversion to number values
+        # Conversion to numeric values
         self.data = self.data.apply(pd.to_numeric, errors='coerce')
         
         # Handle missing values (if any)
