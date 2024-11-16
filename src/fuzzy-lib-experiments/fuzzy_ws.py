@@ -37,9 +37,18 @@ rule6 = ctrl.Rule(web_service_availability['high'] & web_service_reliability['me
 rule7 = ctrl.Rule(web_service_availability['low'] & web_service_reliability['high'], web_service_response_time['low'])
 rule8 = ctrl.Rule(web_service_availability['medium'] & web_service_reliability['high'], web_service_response_time['medium'])
 rule9 = ctrl.Rule(web_service_availability['high'] & web_service_reliability['high'], web_service_response_time['high'])
+rule10 = ctrl.Rule(web_service_availability['medium'] & web_service_reliability['medium'], web_service_response_time['medium'])
+rule11 = ctrl.Rule(web_service_availability['high'] & web_service_reliability['low'], web_service_response_time['medium'])
+rule12 = ctrl.Rule(web_service_availability['low'] & web_service_reliability['high'], web_service_response_time['medium'])
+rule13 = ctrl.Rule(web_service_availability['low'] & web_service_reliability['low'], web_service_response_time['low'])
+rule14 = ctrl.Rule(web_service_availability['high'] & web_service_reliability['high'], web_service_response_time['high'])
 
 # Create web service comparison system
-web_service_comparison = ctrl.ControlSystem([rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9])
+web_service_comparison = ctrl.ControlSystem([
+    rule1, rule2, rule3, rule4, rule5,
+    rule6, rule7, rule8, rule9, rule10,
+    rule11, rule12, rule13, rule14,
+])
 web_service_simulation = ctrl.ControlSystemSimulation(web_service_comparison)
 
 # Main loop for user input and output
