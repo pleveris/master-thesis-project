@@ -16,14 +16,27 @@ columns = [
     'Reliability', 'Compliance', 'Best Practices', 'Latency',
     'Documentation', 'Service Name', 'WSDL Address'
 ]
-qws_data = pd.read_csv(csv_file, names=columns)
+qws_data = pd.read_csv(csv_file)
+qws_data = qws_data.loc[:, ~qws_data.columns.str.contains('^Unnamed')]
+
+### for debugging purposes (to be removed later)
+#for index, row in qws_data.head(5).iterrows():
+    #print(f"Row {index}:")
+    #for col in qws_data.columns:
+        #print(f"  {col}: {row[col]}")
 
 # Define fuzzy variables
 response_time = ctrl.Antecedent(np.arange(0, 4000, 1), 'response_time')
 availability = ctrl.Antecedent(np.arange(0, 101, 1), 'availability')
-throughput = ctrl.Antecedent(np.arange(0, 101, 1), 'throughput')
+throughput = ctrl.Antecedent(np.arange(0, 11, 1), 'throughput')
+throughput['low'] = fuzz.trimf(throughput.universe, [0, 0, 5])
+throughput['average'] = fuzz.trimf(throughput.universe, [0, 5, 10])
+throughput['high'] = fuzz.trimf(throughput.universe, [8, 10, 10])  # Adding 'high'
 reliability = ctrl.Antecedent(np.arange(0, 101, 1), 'reliability')
 trustworthiness = ctrl.Consequent(np.arange(0, 101, 1), 'trustworthiness')
+trustworthiness['poor'] = fuzz.trimf(trustworthiness.universe, [0, 0, 50])
+trustworthiness['average'] = fuzz.trimf(trustworthiness.universe, [0, 50, 100])
+trustworthiness['good'] = fuzz.trimf(trustworthiness.universe, [50, 100, 100])
 
 # Define membership functions
 response_time['fast'] = fuzz.trimf(response_time.universe, [0, 0, 500])
@@ -31,9 +44,9 @@ response_time['medium'] = fuzz.trimf(response_time.universe, [500, 1500, 3000])
 response_time['slow'] = fuzz.trimf(response_time.universe, [1500, 4000, 4000])
 
 availability.automf(3)  # Low, Medium, High
-throughput.automf(3)    # Low, Medium, High
+#throughput.automf(3)    # Low, Medium, High
 reliability.automf(3)   # Low, Medium, High
-trustworthiness.automf(3)  # Low, Medium, High
+#trustworthiness.automf(3)  # Low, Medium, High
 
 # Define fuzzy rules
 rules = [
