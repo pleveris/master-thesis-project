@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
+import matplotlib.pyplot as plt
 
 # Load data
 csv_file = GlobalVars.dataset_path
@@ -94,3 +95,14 @@ print(qws_data_sorted[['Service Name', 'Trustworthiness']].head(10))
 
 # Save the sorted data to a CSV file
 qws_data_sorted.to_csv('qws_trustworthiness_evaluation.csv', index=False)
+
+# show the visual representation
+plt.figure(figsize=(12, 8))
+plt.barh(qws_data_sorted['Service Name'].head(10), qws_data_sorted['Trustworthiness'].head(10), color='skyblue')
+plt.xlabel('Trustworthiness Score')
+plt.ylabel('Service Name')
+plt.title('Top 10 Most Trustworthy Web Services')
+plt.gca().invert_yaxis()
+plt.tight_layout()
+plt.savefig('trustworthiness_chart.png')
+plt.show()
