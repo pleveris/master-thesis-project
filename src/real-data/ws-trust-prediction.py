@@ -26,12 +26,12 @@ qws_data = qws_data.loc[:, ~qws_data.columns.str.contains('^Unnamed')]
         #print(f"  {col}: {row[col]}")
 
 # Define fuzzy variables
-response_time = ctrl.Antecedent(np.arange(0, 4000, 1), 'response_time')
+response_time = ctrl.Antecedent(np.arange(0, 5001, 1), 'response_time')
 availability = ctrl.Antecedent(np.arange(0, 101, 1), 'availability')
-throughput = ctrl.Antecedent(np.arange(0, 11, 1), 'throughput')
-throughput['low'] = fuzz.trimf(throughput.universe, [0, 0, 5])
-throughput['average'] = fuzz.trimf(throughput.universe, [0, 5, 10])
-throughput['high'] = fuzz.trimf(throughput.universe, [8, 10, 10])  # Adding 'high'
+throughput = ctrl.Antecedent(np.arange(0, 101, 1), 'throughput')
+throughput['low'] = fuzz.trimf(throughput.universe, [0, 0, 30])
+throughput['average'] = fuzz.trimf(throughput.universe, [20, 50, 80])
+throughput['high'] = fuzz.trimf(throughput.universe, [70, 100, 100])
 reliability = ctrl.Antecedent(np.arange(0, 101, 1), 'reliability')
 trustworthiness = ctrl.Consequent(np.arange(0, 101, 1), 'trustworthiness')
 trustworthiness['poor'] = fuzz.trimf(trustworthiness.universe, [0, 0, 50])
@@ -39,9 +39,9 @@ trustworthiness['average'] = fuzz.trimf(trustworthiness.universe, [0, 50, 100])
 trustworthiness['good'] = fuzz.trimf(trustworthiness.universe, [50, 100, 100])
 
 # Define membership functions
-response_time['fast'] = fuzz.trimf(response_time.universe, [0, 0, 500])
-response_time['medium'] = fuzz.trimf(response_time.universe, [500, 1500, 3000])
-response_time['slow'] = fuzz.trimf(response_time.universe, [1500, 4000, 4000])
+response_time['fast'] = fuzz.trimf(response_time.universe, [0, 0, 1000])
+response_time['medium'] = fuzz.trimf(response_time.universe, [500, 2500, 4000])
+response_time['slow'] = fuzz.trimf(response_time.universe, [3000, 5000, 5000])
 
 availability.automf(3)  # Low, Medium, High
 #throughput.automf(3)    # Low, Medium, High
@@ -64,6 +64,15 @@ trust_simulation = ctrl.ControlSystemSimulation(trust_control_system)
 # Evaluate trustworthiness for each web service
 def evaluate_trustworthiness(row):
     try:
+        if not (0 <= row['Response Time'] < 5000):
+            raise ValueError(f"Response Time {row['Response Time']} out of range")
+        if not (0 <= row['Availability'] <= 100):
+            raise ValueError(f"Availability {row['Availability']} out of range")
+        if not (0 <= row['Throughput'] <= 100):
+            raise ValueError(f"Throughput {row['Throughput']} out of range")
+        if not (0 <= row['Reliability'] <= 100):
+            raise ValueError(f"Reliability {row['Reliability']} out of range")
+
         trust_simulation.input['response_time'] = row['Response Time']
         trust_simulation.input['availability'] = row['Availability']
         trust_simulation.input['throughput'] = row['Throughput']
