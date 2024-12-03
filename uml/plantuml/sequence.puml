@@ -1,0 +1,33 @@
+@startuml
+actor User
+participant Script as S
+participant "Pandas DataFrame" as DF
+participant "Fuzzy Logic System" as FLS
+participant Matplotlib as M
+
+User -> S: Start Script
+S -> S: Import Libraries
+S -> S: Define Fuzzy Variables & Rules
+
+User -> S: Provide CSV File Path
+S -> DF: Read CSV File
+DF -> S: Load Data into DataFrame
+
+S -> DF: Loop through each row
+alt Valid Row Data
+    S -> FLS: Compute Trustworthiness
+    FLS -> S: Return Trustworthiness Score
+else Invalid Row Data
+    S -> S: Log Error
+    S -> S: Assign Score = 0
+end
+
+S -> DF: Store Trustworthiness Scores
+S -> DF: Sort DataFrame by Trustworthiness
+
+User -> S: Request Visualization
+S -> M: Generate Bar Chart
+M -> S: Save Chart as Image
+S -> User: Display Chart
+
+@enduml

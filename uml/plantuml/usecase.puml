@@ -1,0 +1,30 @@
+@startuml
+
+left to right direction
+
+actor "Web Service User" as User
+actor "Web Service Maker" as Maker
+
+rectangle "Web Service Trust Prediction" {
+    usecase "Analyze Trusted Web Services" as UC1
+    usecase "Choose Faster Web Services" as UC2
+    usecase "Improve Service Quality" as UC3
+    usecase "Benchmark Web Services" as UC4
+    usecase "Historical Trend Analysis" as UC5
+    usecase "Custom Criteria Configuration" as UC6
+    usecase "Alerting for Degraded Performance" as UC7
+    usecase "Service Recommendation System" as UC8
+}
+
+User --> UC1
+User --> UC2
+Maker --> UC3
+Maker --> UC4
+User --> UC5
+Maker --> UC5
+User --> UC6
+Maker --> UC6
+User --> UC7
+User --> UC8
+
+@enduml
