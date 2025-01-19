@@ -84,6 +84,47 @@ def evaluate_trustworthiness(row):
         print(f"Error processing row {row['Service Name']}: {e}")
         return 0
 
+# Script for QoS Testing
+def check_qos(services):
+    results = []
+    for service in services:
+        url = service.get("url")
+        service_name = service.get("name")
+        
+        try:
+            start_time = time.time()
+            response = requests.get(url, timeout=10)
+            end_time = time.time()
+            
+            response_time = (end_time - start_time) * 1000  # in milliseconds
+            availability = 1 if response.status_code == 200 else 0
+            throughput = len(response.content) / response_time if response_time > 0 else 0
+            
+            results.append({
+                "Service Name": service_name,
+                "URL": url,
+                "Response Time (ms)": round(response_time, 2),
+                "Availability": availability,
+                "Throughput (KB/s)": round(throughput, 2)
+            })
+        
+        except requests.exceptions.RequestException as e:
+            results.append({
+                "Service Name": service_name,
+                "URL": url,
+                "Response Time (ms)": None,
+                "Availability": 0,
+                "Throughput (KB/s)": None,
+                "Error": str(e)
+            })
+    return results
+
+def save_results_to_csv(results, filename="qos_results.csv"):
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=results[0].keys())
+        writer.writeheader()
+        writer.writerows(results)
+
 # Apply the evaluation to the dataset
 qws_data['Trustworthiness'] = qws_data.apply(evaluate_trustworthiness, axis=1)
 
