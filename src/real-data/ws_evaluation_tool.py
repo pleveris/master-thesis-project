@@ -1,7 +1,10 @@
 import pandas as pd
 import numpy as np
 from scipy.stats import rankdata
-
+import csv
+from operator import itemgetter
+import os
+import webbrowser
 
 def load_dataset(dataset_choice, file_path):
     """
@@ -27,7 +30,7 @@ def calculate_weights(decision_matrix, criteria_types):
     """
     Calculate weights using the Entropy Weighting Method.
     """
-    print("Calculating weights using Entropy Weighting Method...")
+    print("Calculating weights...")
     normalized_matrix = decision_matrix.copy()
     for i, col in enumerate(decision_matrix.columns):
         if criteria_types[i] == "max":
@@ -152,6 +155,114 @@ def main():
     vikor_results = fuzzy_vikor(decision_matrix, weights, criteria_types)
     generate_report(df, waspas_results, vikor_results)
 
+def improvedExperiment():
+    df = pd.read_csv("datasets/qws.csv")
+
+    columns = [
+        'Response Time', 'Latency', 'Availability', 'Reliability',
+        'Best Practices', 'Successability', 'Service Name', 'WSDL Address'
+    ]
+    df = df[columns].dropna()
+
+    # Separate benefit_criteria and cost_criteria
+    benefit_criteria = ['Availability', 'Reliability', 'Best Practices', 'Successability']
+    cost_criteria = ['Response Time', 'Latency']
+
+    normalized_df = pd.DataFrame()
+    for col in benefit_criteria:
+        normalized_df[col] = df[col] / df[col].max()
+    for col in cost_criteria:
+        normalized_df[col] = df[col].min() / df[col]
+
+    P = normalized_df / normalized_df.sum()
+    E = -np.nansum(P * np.log(P + 1e-10), axis=0) / np.log(len(df))
+    d = 1 - E
+    fuzzy_weights = d / d.sum()
+
+    trust_scores = (normalized_df * fuzzy_weights).sum(axis=1)
+
+    df['Trust Score'] = trust_scores
+    top_10 = df.sort_values(by=["Trust Score"], ascending=[False])
+
+    df = df.sort_values(by=["Trust Score"], ascending=[False])
+
+    print("Trusted Web Services by a trust score:")
+    print(top_10[['Service Name', 'WSDL Address', 'Trust Score']])
+
+    # Ability to save into CSV (if needed)
+    # top_10.to_csv("top10_trusted_services.csv", index=False)
+
+def get_services(filepath):
+    result = []
+    with open(filepath, mode='r', newline='', encoding='utf-8') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            if len(row) != 5: # 5 values
+                continue
+            serviceName, serviceAddress, waspas, vikor, topsis = row
+            result.append((serviceName, serviceAddress, waspas, vikor, topsis));
+    return result
+
+def generate_html_report(services, output_path, totalRows):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    html = """
+    <html>
+    <head>
+        <title>Top 10 Most Trusted Services</title>
+        <style>
+            body { font-family: Arial, sans-serif; }
+            table { border-collapse: collapse; width: 60%; margin: 20px auto; }
+            th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+            th { background-color: #f2f2f2; }
+        </style>
+    </head>
+    <body>
+        <h2 style="text-align: center;">Top 10 Most Trusted Services</h2>
+        <table>
+            <tr>
+                <th>Service Name</th>
+                <th>Service address</th>
+                <th>Trust Score</th>
+                <th>Waspas score</th>
+                <th>Vikor score</th>
+                <th>Topsis score</th>
+            </tr>
+    """ # Basic document, should become a dynamic one in the future
+    generated = 0
+
+    for serviceName, serviceAddress, waspas, vikor, topsis in services:
+        if serviceName == 'Service Name': continue
+        if generated == totalRows: break
+        generated += 1
+        html += f"""
+            <tr>
+                <td>{serviceName}</td>
+                <td>{serviceAddress}</td>
+                <td>{waspas}</td>
+                <td>{vikor}
+                <td>{topsis}
+            </tr>
+        """
+
+    html += """
+        </table>
+    </body>
+    </html>
+    """
+
+    with open(output_path, 'w', encoding='utf-8') as file:
+        file.write(html)
+    print(f"HTML report saved to {output_path}")
+    print(f'Total number of web services saved: {generated}')
+    webbrowser.open(f'file://{os.path.abspath(output_path)}') # Fun for a quick test but might be annoying in the longterm
+
 
 if __name__ == "__main__":
-    main()
+    #main()
+    improvedExperiment()
+    csv_path = 'datasets/qws_result_trust.csv'
+    output_html_path = 'output/trusted_services_report.html'
+
+    services = get_services(csv_path); print(services)
+    generate_html_report(services, output_html_path, 10) # to become in a config
+print('----- Report generation complete! -----')
