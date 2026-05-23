@@ -26,10 +26,12 @@ WEIGHTS = {"Response Time": 0.45, "Latency": 0.35, "Throughput": 0.20}
 BENEFIT = {"Response Time": False, "Latency": False, "Throughput": True}  # cost / cost / benefit
 
 # triangular MFs (a, b, c); "High" = best performance. Used for labelling.
+# Overlapping form: bases extended to the neighbour's peak so
+# adjacent terms cross.
 MF = {
-    "Latency":       {"High": (0, 333.33, 1000),  "Medium": (1001, 2166.67, 3000), "Low": (3001, 4333.33, 5000)},
-    "Response Time": {"High": (37, 862.45, 1687),  "Medium": (1688, 2513.34, 3338), "Low": (3339, 4164.23, 4989)},
-    "Throughput":    {"High": (27, 34.33, 41),     "Medium": (15, 21, 26),          "Low": (1, 7.67, 14)},
+    "Latency":       {"High": (0, 333.33, 2166.67),  "Medium": (333.33, 2166.67, 4333.33), "Low": (2166.67, 4333.33, 5000)},
+    "Response Time": {"High": (37, 862.45, 2513.34), "Medium": (862.45, 2513.34, 4164.23), "Low": (2513.34, 4164.23, 4989)},
+    "Throughput":    {"High": (21, 34.33, 41),       "Medium": (7.67, 21, 34.33),          "Low": (1, 7.67, 21)},
 }
 TERMS = ["Low", "Medium", "High"]
 LAMBDA = 0.5
@@ -47,7 +49,6 @@ EXAMPLES = {
     "c406":  {"row": 405,  "WASPAS": 0.942, "TOPSIS": 0.930, "VIKOR": 0.924, "Trust": 0.724, "Crisp": 0.918},
     "c1162": {"row": 1161, "WASPAS": 0.999, "TOPSIS": 0.999, "VIKOR": 1.000, "Trust": 0.834, "Crisp": 0.999},
 }
-
 
 # --------------------------------------------------------------------------- #
 # Helpers
@@ -74,7 +75,7 @@ def dist_to_triangle(x, abc):
 
 
 def label_term(value, attr):
-    """Dominant linguistic term under Table 2 MFs (nearest triangle if in a gap)."""
+    """Dominant linguistic term under MFs (nearest triangle if in a gap)."""
     mus = {t: trimf(value, MF[attr][t]) for t in TERMS}
     best = max(mus, key=mus.get)
     if mus[best] > 0:
@@ -120,14 +121,26 @@ def normalize(df):
 # correlation analysis
 # --------------------------------------------------------------------------- #
 def correlation_table(df):
+    """Returns Kendall tau-b and Spearman rho matrices over the QoS attributes."""
     cols = [c for c in ["Response Time", "Throughput", "Latency",
                         "Availability", "Successability", "Reliability"] if c in df.columns]
     kendall = pd.DataFrame(index=cols, columns=cols, dtype=float)
+    spear = pd.DataFrame(index=cols, columns=cols, dtype=float)
     for a in cols:
         for b in cols:
             mask = df[a].notna() & df[b].notna()
             kendall.loc[a, b] = float(kendalltau(df.loc[mask, a], df.loc[mask, b]).statistic)
-    return kendall
+            spear.loc[a, b] = float(spearmanr(df.loc[mask, a], df.loc[mask, b]).statistic)
+    return kendall, spear
+
+
+def combine_ks(kendall, spear):
+    """Format two correlation matrices as 'kendall / spearman' strings."""
+    out = pd.DataFrame(index=kendall.index, columns=kendall.columns, dtype=object)
+    for a in kendall.index:
+        for b in kendall.columns:
+            out.loc[a, b] = f"{kendall.loc[a, b]:.3f}/{spear.loc[a, b]:.3f}"
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -224,9 +237,9 @@ def main():
     df = load_data()
     print(f"Loaded {len(df)} web services with complete Performance-Efficiency data.\n")
 
-    kendall = correlation_table(df)
-    print("=== Step 1: QoS correlation analysis (Kendall tau-b) ===")
-    print(kendall.round(3).to_string(), "\n")
+    kendall, spear = correlation_table(df)
+    print("=== QoS correlation analysis (Kendall tau-b / Spearman rho) ===")
+    print(combine_ks(kendall, spear).to_string(), "\n")
 
     r = normalize(df)
     for attr in PE_ATTRS:
@@ -244,29 +257,32 @@ def main():
 
     tau = kendalltau(df["Trust_Score"], df["Crisp_Score"]).statistic
     rho = spearmanr(df["Trust_Score"], df["Crisp_Score"]).statistic
-    print("=== Step 3: agreement between fuzzy-MCDM (FIS) and crisp trust scores ===")
-    print(f"  Kendall tau-b : {tau:.3f}   (earlier reported as  0.943)")
-    print(f"  Spearman rho  : {rho:.3f}   (earlier reported as 0.993)")
-    print(f"  R^2 (rho^2)   : {rho**2:.3f}   (earlier reported as ~0.986)")
-    print(f"  Trusted (fuzzy): {(df['Trusted_Fuzzy']=='Trusted').sum()} / {len(df)}    "
-          f"Trusted (crisp): {(df['Trusted_Crisp']=='Trusted').sum()} / {len(df)}")
-    # Pairwise method correlations
-    print("\n  Pairwise Kendall tau-b among scores:")
-    for x in ["WASPAS", "TOPSIS", "VIKOR", "Trust_Score"]:
-        print(f"    {x:<12} vs Crisp: tau-b={kendalltau(df[x], df['Crisp_Score']).statistic:.3f}")
-    print()
+    n_ft = (df["Trusted_Fuzzy"] == "Trusted").sum()
+    n_ct = (df["Trusted_Crisp"] == "Trusted").sum()
 
-    print("=== Worked-example comparison ===")
-    print("    (MCDM scores match exactly; Crisp & Trust differ -> see notes)")
-    print(f"{'case':>6} | {'WASPAS art/run':>17} | {'TOPSIS art/run':>17} | "
-          f"{'VIKOR art/run':>17} | {'Trust art/run':>17} | {'Crisp art/run':>17}")
+    print("=== Agreement between fuzzy-MCDM (FIS) and crisp Trust Scores ===")
+    t5 = pd.DataFrame(
+        [[f"1.000/1.000", f"{tau:.3f}/{rho:.3f}"], [f"{tau:.3f}/{rho:.3f}", f"1.000/1.000"]],
+        index=["Fuzzy-MCDM Trust Score", "Crisp Trust Score"],
+        columns=["Fuzzy-MCDM Trust Score", "Crisp Trust Score"])
+    print(t5.to_string(), "  (Kendall tau-b / Spearman rho)\n")
+    print(f"  Kendall tau-b={tau:.3f}  Spearman rho={rho:.3f}  R^2={rho**2:.3f}   "
+          f"[published: 0.943 / 0.993 / 0.986]")
+    print(f"  Trusted (fuzzy): {n_ft} / {len(df)}    Trusted (crisp): {n_ct} / {len(df)}")
+    print("  Pairwise vs Crisp (Kendall tau-b): " + "  ".join(
+        f"{x}={kendalltau(df[x], df['Crisp_Score']).statistic:.3f}"
+        for x in ["WASPAS", "TOPSIS", "VIKOR", "Trust_Score"]) + "\n")
+
+    print("=== Result ===")
+    print(f"{'case':>6} | {'WASPAS pub/new':>17} | {'TOPSIS pub/new':>17} | "
+          f"{'VIKOR pub/new':>17} | {'Trust pub/new':>17} | {'Crisp pub/new':>17} | {'new label':>9}")
     for case, ex in EXAMPLES.items():
         x = df.iloc[ex["row"] - 1]
         print(f"{case:>6} | {ex['WASPAS']:>8.3f}/{x['WASPAS']:<8.3f} | "
               f"{ex['TOPSIS']:>8.3f}/{x['TOPSIS']:<8.3f} | "
               f"{ex['VIKOR']:>8.3f}/{x['VIKOR']:<8.3f} | "
               f"{ex['Trust']:>8.3f}/{x['Trust_Score']:<8.3f} | "
-              f"{ex['Crisp']:>8.3f}/{x['Crisp_Score']:<8.3f}")
+              f"{ex['Crisp']:>8.3f}/{x['Crisp_Score']:<8.3f} | {x['Trust_Label']:>9}")
     print()
 
     os.makedirs(OUTDIR, exist_ok=True)
