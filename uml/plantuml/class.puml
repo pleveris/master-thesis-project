@@ -1,0 +1,73 @@
+
+@startuml
+
+package "Fuzzy Logic System" {
+    class Antecedent {
+        + universe: ndarray
+        + name: str
+        + membership_functions: dict
+        + automf(n: int)
+    }
+
+    class Consequent {
+        + universe: ndarray
+        + name: str
+        + membership_functions: dict
+    }
+
+    class FuzzyVariable {
+        + universe: ndarray
+        + name: str
+    }
+
+    class Rule {
+        + antecedent: Antecedent
+        + consequent: Consequent
+    }
+
+    class ControlSystem {
+        + rules: list[Rule]
+    }
+
+    class ControlSystemSimulation {
+        + input: dict
+        + output: dict
+        + compute()
+    }
+}
+
+package "Script Components" {
+    class DataFrame {
+        + data: ndarray
+        + read_csv(filepath: str)
+        + apply(func: Callable)
+        + sort_values(by: str, ascending: bool)
+        + to_csv(filepath: str)
+    }
+
+    class Visualization {
+        + generate_bar_chart(data: DataFrame, filepath: str)
+    }
+
+    class Script {
+        - fuzzy_system: ControlSystem
+        - dataset: DataFrame
+        + evaluate_trustworthiness(row: dict): float
+        + main()
+    }
+}
+
+Script --> DataFrame : "Loads data"
+Script --> "Fuzzy Logic System" : "Sets up fuzzy rules"
+Script --> ControlSystemSimulation : "Simulates trustworthiness"
+Script --> Visualization : "Generates bar chart"
+
+Antecedent <|-- FuzzyVariable
+Consequent <|-- FuzzyVariable
+ControlSystem --> Rule : "Contains"
+Rule --> Antecedent : "Uses as input"
+Rule --> Consequent : "Uses as output"
+ControlSystemSimulation --> ControlSystem : "Simulates"
+ControlSystemSimulation --> Rule : "Uses rules"
+
+@enduml
